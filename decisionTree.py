@@ -4,12 +4,7 @@ from collections import Counter, defaultdict
 import itertools
 from utils import *
 
-
-
-def build_tree(D, split_candidates=None):
-
-    if split_candidates is None:
-        split_candidates = allAttributes
+def makeTree(D, attrs):
 
     num_inputs = len(D)
     labelsCount = Counter([label[className] for _, label in D])
@@ -20,35 +15,37 @@ def build_tree(D, split_candidates=None):
 
     c = [(x,y) for x,y in labelsCount.items()]
     ll = list(sorted(c, key=lambda x: x[1], reverse=True))
-    if not split_candidates:
+
+    if not attrs:
         result = ll[0][0]
         return result
 
     information_gains = {}
-    for candidate in split_candidates:
-        information_gains[candidate] = getExpectedInformation(D,candidate)
+    for attr in attrs:
+        information_gains[attr] = getExpectedInformation(D,attr)
 
-    best_attribute = min(information_gains, key = information_gains.get)
-    partitions = partition_by(D, best_attribute)
+    nextAttr = min(information_gains, key = information_gains.get)
+    partitions = makePartitions(D, nextAttr)
 
-    new_candidates = list(filter(lambda x: x != best_attribute, split_candidates))
+    remainAttrs = list(filter(lambda x: x != nextAttr, attrs))
 
-    subtrees = { attribute_value : build_tree(subset, new_candidates) for attribute_value, subset in partitions.items()}
-    subtrees[None] = ll[0][0]
+    subtrees = { attr : makeTree(subset, remainAttrs) for attr, subset in partitions.items()}
+    subtrees['EOT'] = ll[0][0]
 
-    return (best_attribute, subtrees)
+    return (nextAttr, subtrees)
 
 def classify(tree, d):
 
     if tree in list(classLabels):
         return tree
 
-    attribute, subtree_dict = tree
-    subtree_key = d[attribute]
+    attr, subDict = tree
+    subtree_key = d[attr]
 
-    if subtree_key not in subtree_dict:
-        subtree_key = None
-    subtree = subtree_dict[subtree_key]
+    if subtree_key not in subDict:
+        subtree_key = 'EOT'
+
+    subtree = subDict[subtree_key]
 
     return classify(subtree, d)
 
@@ -74,7 +71,7 @@ for line in trainData[1:-1]:
 
     classLabels.add(classLabel)
 
-DTree = build_tree(trainInput)
+DTree = makeTree(trainInput, allAttributes)
 
 testData = test_file.read().split('\n')
 
