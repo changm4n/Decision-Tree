@@ -4,33 +4,15 @@ from collections import Counter, defaultdict
 import itertools
 from utils import *
 
-def class_probabilities(labels):
-    total_count = len(labels)
-    return [float(count) / float(total_count) for count in Counter(labels).values()]
-
-def data_entropy(labeled_data):
-    labels = [label[className] for _, label in labeled_data]
-    probabilities = class_probabilities(labels)
-
-    return getGiniIndex(probabilities)
-
-def partition_entropy(subsets):
-    total_count = sum(len(subset) for subset in subsets)
-    return sum(data_entropy(subset) * len(subset) / total_count for subset in subsets)
 
 
-
-def getExpectedInformation(inputs, attribute):
-    partitions = partition_by(inputs, attribute)
-    return partition_entropy(partitions.values())
-
-def build_tree(inputs, split_candidates=None):
+def build_tree(D, split_candidates=None):
 
     if split_candidates is None:
         split_candidates = allAttributes
 
-    num_inputs = len(inputs)
-    labelsCount = Counter([label[className] for _, label in inputs])
+    num_inputs = len(D)
+    labelsCount = Counter([label[className] for _, label in D])
 
     l = list(filter(lambda x: x[1] != 0,labelsCount.items()))
     if l.count == 1:
@@ -44,12 +26,10 @@ def build_tree(inputs, split_candidates=None):
 
     information_gains = {}
     for candidate in split_candidates:
-        information_gains[candidate] = getExpectedInformation(inputs,candidate)
+        information_gains[candidate] = getExpectedInformation(D,candidate)
 
     best_attribute = min(information_gains, key = information_gains.get)
-
-    partitions = partition_by(inputs, best_attribute)
-
+    partitions = partition_by(D, best_attribute)
 
     new_candidates = list(filter(lambda x: x != best_attribute, split_candidates))
 
@@ -58,20 +38,19 @@ def build_tree(inputs, split_candidates=None):
 
     return (best_attribute, subtrees)
 
-def classify(tree, input):
+def classify(tree, d):
 
     if tree in list(classLabels):
         return tree
 
     attribute, subtree_dict = tree
-    subtree_key = input[attribute]
+    subtree_key = d[attribute]
 
     if subtree_key not in subtree_dict:
         subtree_key = None
     subtree = subtree_dict[subtree_key]
 
-    return classify(subtree, input)
-
+    return classify(subtree, d)
 
 
 
